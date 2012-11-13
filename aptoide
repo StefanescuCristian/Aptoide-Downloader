@@ -19,7 +19,7 @@ mkdir -p $HOME/aptoide
 aptoide_home_dir=$(echo $HOME/aptoide)
 
 ### Schimbam link-ul HTTP in link-ul pentru telefoane mobile ###
-link_http=$(echo $1 | sed 's/apps/m.apps/g')
+link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
 
 ### Salvam html-ul descarcat ca numele aplicatiei ###
 fisier=$(echo $link_http | sed 's/\//\ /g' | awk '{print $NF}')
