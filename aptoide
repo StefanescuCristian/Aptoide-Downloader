@@ -7,7 +7,12 @@ echo "#   Aptoide Downloader   #"
 echo "##                      ##"
 echo "###                    ###"
 echo "##########################"
-echo "©Cristian Stefanescu"
+
+echo "Aptoide Downloader  Copyright (C) 2012 Cristian Stefanescu
+    This program comes with ABSOLUTELY NO WARRANTY;
+    This is free software, and you are welcome to redistribute it
+    under certain conditions;  for details see LICENCE
+    or visit http://www.gnu.org/licenses/"
 
 ### Cream directorul aptoide si-i salvam numele intr-o variabila ###
 mkdir -p $HOME/aptoide
