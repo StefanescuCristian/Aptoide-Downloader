@@ -39,7 +39,7 @@ echo "1."
 apk_ul=$(cat $fisier_myapp | tail -1 | head -2 | sed 's/<[^>]*>/ /g' | awk '{print $(NF-4)}')
 nume_apk=$(echo $fisier_myapp | tail -1 | head -2 | sed 's/%20/\ /g' | sed 's/.myapp//g' | sed 's/\/tmp\///g')
 echo "Descarcam..."
-wget -c -nc $apk_ul -O $aptoide_home_dir/$nume_apk.apk
+wget -c -nc $apk_ul -O $aptoide_home_dir/"$nume_apk.apk"
 echo "Fisier salvat!"
 
 ### Facem curat? Facem, chiar daca nu suntem din zodia Fecioarei ###
