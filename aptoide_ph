@@ -23,7 +23,7 @@ else echo "Insert link:"
 read link 
 atribut $link
 fi
-
+### Cleanup ###
 rm $tmp/$fisier 2>&1                                                                                                                                          
 rm $fisier_myapp 2>&1
 }
@@ -43,7 +43,7 @@ wget $link_http -O $tmp/$fisier >/dev/null 2>&1
 ### then we download and save the myapp file ###
 down=$(grep -i \<a\ class=\"app_install_button\" $tmp/$fisier | sed 's/<a class="app_install_button" href="//g' | sed 's/">Install<\/a>//g' | tail -2 | head -n1 | sed 's/^[ \t]*//')
 echo "2.."
-wget $down -O $tmp/$fisier.myapp #>/dev/null 2>&1
+wget $down -O $tmp/$fisier.myapp >/dev/null 2>&1
 fisier_myapp=$(echo $tmp/$fisier.myapp)
 echo "1."
 
@@ -55,9 +55,6 @@ echo "Downloading file..."
 wget -c $apk_ul -O $aptoide_home_dir"$nume_apk.apk"
 echo "File saved as $(echo $nume_apk | sed 's/\///g').apk"
 
-### Cleanup ###
-#rm $tmp/$fisier 2>&1
-#rm $fisier_myapp 2>&1
 }
 
 main;
