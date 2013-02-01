@@ -8,8 +8,8 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script.###
-
-function main () {
+function main()
+{
 ### We create a folder in which aptoide will download the apk ###
 ### and we save the name in a variable ###
 mkdir -p $HOME/aptoide
@@ -22,12 +22,12 @@ atribut $link
 fi
 }
 
-function atribut() {
+function atribut() 
+{
 ### We change the normal HTTP link in the HTTP link used for mobile phones ###
 link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
 
-### We store the html file resulted from the mobile link, ###
-### we extract the file name from the link and save it in a temporary location. ###
+### Salvam html-ul descarcat ca numele aplicatiei ###
 fisier=$(echo $link_http | sed 's/\//\ /g' | awk '{print $NF}')
 echo "Download will start in"
 echo "3..."

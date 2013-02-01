@@ -6,15 +6,28 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
     under certain conditions;  for details see LICENCE
     or visit http://www.gnu.org/licenses/"
 
-### Cream directorul aptoide si-i salvam numele intr-o variabila ###
+### Main function. You can start the download using the link as a argument, ###
+### or read the link from stdin after running the script.###
+function main()
+{
+### We create a folder in which aptoide will download the apk ###
+### and we save the name in a variable ###
 HOME=$(echo /storage/sdcard0)
 mkdir -p $HOME/aptoide
 aptoide_home_dir=$(echo $HOME/aptoide)
 tmp=$(echo $aptoide_home_dir/.tmp)
 mkdir -p $tmp
-atribut() 
+
+if [ "$#" -eq 1 ]; then atribut $1
+else echo "Insert link:"
+read link 
+atribut $link
+fi
+}
+
+function atribut() 
 {
-### Schimbam link-ul HTTP in link-ul pentru telefoane mobile ###
+### We change the normal HTTP link in the HTTP link used for mobile phones ###
 link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
 
 ### Salvam html-ul descarcat ca numele aplicatiei ###
@@ -23,29 +36,25 @@ echo "Download will start in"
 echo "3..."
 wget $link_http -O $tmp/$fisier >/dev/null 2>&1
 
-### Ne folosim de fisierul HTML pentru a cauta link-ul de download, ###
-### apoi descarcam si salvam fisierul myapp ###
-down=$(grep -i \<a\ class=\"app_install_button\" $tmp/$fisier | sed 's/<a class="app_install_button" href="//g' | sed 's/">Install<\/a>//g' | tail -2 | head -n1 | sed 's/^[ \t]*//')
+### We use the html file to search the link to the myapp file, ###
+### then we download and save the myapp file ###
+down=$(grep -i \<a\ class=\"app_install_button\" /tmp/$fisier | sed 's/<a class="app_install_button" href="//g' | sed 's/">Install<\/a>//g' | tail -2 | head -n1 | sed 's/^[ \t]*//')
 echo "2.."
 wget $down -O $tmp/$fisier.myapp >/dev/null 2>&1
 fisier_myapp=$(echo $tmp/$fisier.myapp)
 echo "1."
 
-### Din fisierul myapp facem rost de link-ul pentru *.apk si de numele aplicatiei, ###
-### apoi salvam fisierul apk in directorul aptoide ###
+### From the myapp file we extract the apk's link and the apps name, ###
+### then we save the apk in apt_home_dir ###
 apk_ul=$(cat $fisier_myapp | tail -1 | head -n2 | sed 's/<[^>]*>/ /g' | awk '{print $(NF-4)}')
 nume_apk=$(echo $fisier_myapp | tail -1 | head -n2 | sed 's/%20/\ /g' | sed 's/.myapp//g' | sed 's/\/storage\/sdcard0\/aptoide\/\.tmp//g')
 echo "Downloading file..."
 wget -c $apk_ul -O $aptoide_home_dir"$nume_apk.apk"
 echo "File saved as $(echo $nume_apk | sed 's/\///g').apk"
 
-### Facem curat? Facem, chiar daca nu suntem din zodia Fecioarei ###
+### Cleanup ###
 rm $tmp/$fisier 2>&1
 rm $fisier_myapp 2>&1
 }
 
-if [ "$#" -eq 1 ]; then atribut $1
-else echo "Insert link:"
-read link 
-atribut $link
-fi
+main;
