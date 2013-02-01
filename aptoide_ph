@@ -8,14 +8,14 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script.###
-function main()
+main ()
 {
 ### We create a folder in which aptoide will download the apk ###
 ### and we save the name in a variable ###
 HOME=$(echo /storage/sdcard0)
 mkdir -p $HOME/aptoide
 aptoide_home_dir=$(echo $HOME/aptoide)
-tmp=$(echo $aptoide_home_dir/.tmp)
+tmp=$(echo $aptoide_home_dir/\.tmp)
 mkdir -p $tmp
 
 if [ "$#" -eq 1 ]; then atribut $1
@@ -23,9 +23,12 @@ else echo "Insert link:"
 read link 
 atribut $link
 fi
+
+rm $tmp/$fisier 2>&1                                                                                                                                          
+rm $fisier_myapp 2>&1
 }
 
-function atribut() 
+atribut() 
 {
 ### We change the normal HTTP link in the HTTP link used for mobile phones ###
 link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
@@ -38,9 +41,9 @@ wget $link_http -O $tmp/$fisier >/dev/null 2>&1
 
 ### We use the html file to search the link to the myapp file, ###
 ### then we download and save the myapp file ###
-down=$(grep -i \<a\ class=\"app_install_button\" /tmp/$fisier | sed 's/<a class="app_install_button" href="//g' | sed 's/">Install<\/a>//g' | tail -2 | head -n1 | sed 's/^[ \t]*//')
+down=$(grep -i \<a\ class=\"app_install_button\" $tmp/$fisier | sed 's/<a class="app_install_button" href="//g' | sed 's/">Install<\/a>//g' | tail -2 | head -n1 | sed 's/^[ \t]*//')
 echo "2.."
-wget $down -O $tmp/$fisier.myapp >/dev/null 2>&1
+wget $down -O $tmp/$fisier.myapp #>/dev/null 2>&1
 fisier_myapp=$(echo $tmp/$fisier.myapp)
 echo "1."
 
@@ -53,8 +56,8 @@ wget -c $apk_ul -O $aptoide_home_dir"$nume_apk.apk"
 echo "File saved as $(echo $nume_apk | sed 's/\///g').apk"
 
 ### Cleanup ###
-rm $tmp/$fisier 2>&1
-rm $fisier_myapp 2>&1
+#rm $tmp/$fisier 2>&1
+#rm $fisier_myapp 2>&1
 }
 
 main;
