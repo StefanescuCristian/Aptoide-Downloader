@@ -6,8 +6,7 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
     under certain conditions;  for details see LICENCE
     or visit http://www.gnu.org/licenses/"
 
-### Main function. You can start the download using the link as a argument, ###
-### or read the link from stdin after running the script.###
+### Main function. You can start the download by reading the link from stdin after running the script.###
 main ()
 {
 ### We create a folder in which aptoide will download the apk ###
@@ -18,11 +17,10 @@ aptoide_home_dir=$(echo $HOME/aptoide)
 tmp=$(echo $aptoide_home_dir/\.tmp)
 mkdir -p $tmp
 
-if [ "$#" -eq 1 ]; then atribut $1
-else echo "Insert link:"
+echo "Insert link:"
 read link 
 atribut $link
-fi
+
 ### Cleanup ###
 rm $tmp/$fisier 2>&1                                                                                                                                          
 rm $fisier_myapp 2>&1
