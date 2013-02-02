@@ -25,7 +25,13 @@ fi
 function atribut() 
 {
 ### We change the normal HTTP link in the HTTP link used for mobile phones ###
-link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
+mobile=$(echo 'http://m.')
+test_link=$(echo $1 | grep -o 'http://m.')
+if [ "$mobile" == "$test_link" ]; then
+	link_http=$link
+	else
+	link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
+fi
 
 ### Salvam html-ul descarcat ca numele aplicatiei ###
 fisier=$(echo $link_http | sed 's/\//\ /g' | awk '{print $NF}')
