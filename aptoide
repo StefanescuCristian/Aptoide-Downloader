@@ -41,7 +41,7 @@ wget $link_http -O /tmp/$fisier >/dev/null 2>&1
 
 ### We use the html file to search the link to the myapp file, ###
 ### then we download and save the myapp file ###
-down=$(grep -i \<a\ class=\"app_install_button\" /tmp/$fisier | uniq | sed 's/<a class="app_install_button" href="//g' | sed 's/".>Install<\/a>//g' | tail -2 | head -1 | sed 's/^[ \t]*//')
+down=$(grep -i \<a\ class=\"app_install_button\" /tmp/$fisier | uniq | sed 's/<a class="app_install_button" href="//g' | sed 's/".>Install<\/a>//g' | sed 's/^[[:blank:]]*//g')
 echo "2.."
 wget $down -O /tmp/$fisier.myapp >/dev/null 2>&1
 fisier_myapp=$(echo /tmp/$fisier.myapp)
@@ -49,7 +49,7 @@ echo "1."
 
 ### From the myapp file we extract the apk's link and the apps name, ###
 ### then we save the apk in apt_home_dir ###
-apk_ul=$(cat $fisier_myapp | tail -1 | head -2 | sed 's/<[^>]*>/ /g' | awk '{print $(NF-4)}')
+apk_ul=$(cat $fisier_myapp | sed 's/<[^>]*>/ /g' | sed 's/^[[:blank:]]//' | awk '{print $4}')
 nume_apk=$(echo $fisier_myapp | tail -1 | head -2 | sed 's/%20/\ /g' | sed 's/.myapp//g' | sed 's/\/tmp\///g')
 echo "Downloading file..."
 wget -c $apk_ul -O $aptoide_home_dir/"$nume_apk.apk"
