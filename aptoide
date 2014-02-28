@@ -49,7 +49,7 @@ echo "1."
 
 ### From the myapp file we extract the apk's link and the apps name, ###
 ### then we save the apk in apt_home_dir ###
-apk_ul=$(cat $fisier_myapp | sed 's/<[^>]*>/ /g' | sed 's/^[[:blank:]]//' | awk '{print $4}')
+apk_ul=$(cat $fisier_myapp | sed 's/.*\<get\>//g' | sed 's/\<\/get\>.*//g' | grep http)
 nume_apk=$(echo $fisier_myapp | tail -1 | head -2 | sed 's/%20/\ /g' | sed 's/.myapp//g' | sed 's/\/tmp\///g')
 echo "Downloading file..."
 wget -c $apk_ul -O $aptoide_home_dir/"$nume_apk.apk"
