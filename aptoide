@@ -4,60 +4,114 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
     This program comes with ABSOLUTELY NO WARRANTY;
     This is free software, and you are welcome to redistribute it
     under certain conditions;  for details see LICENCE
-    or visit http://www.gnu.org/licenses/"
+    or visit http://www.gnu.org/licenses/
+    "
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script.###
 function main()
 {
-### We create a folder in which aptoide will download the apk ###
-### and we save the name in a variable ###
-mkdir -p $HOME/aptoide
-aptoide_home_dir=$(echo $HOME/aptoide)
+	### We create a folder in which aptoide will download the apk ###
+	### and we save the name in a variable ###
+	mkdir -p $HOME/aptoide
+	aptoide_home_dir=$(echo $HOME/aptoide)
 
-if [ "$#" -eq 1 ]; then atribut $1
-else echo "Insert link:"
-read link 
-atribut $link
-fi
+	if [ "$#" -eq 1 ]; then
+		atribut $1
+	else
+		echo "Insert link:"
+		read link
+		atribut $link
+	fi
 }
 
 function atribut() 
 {
-### We change the normal HTTP link in the HTTP link used for mobile phones ###
-mobile=$(echo 'http://m.')
-test_link=$(echo $1 | grep -o 'http://m.')
-if [ "$mobile" == "$test_link" ]; then
-	link_http=$link
+
+	### Test if we have a valid Aptiode URL ###
+	test_url_regex="^http\:\/\/.*\.store\.aptoide\.com\/.*$"
+	if ! [[ "$1" =~ $test_url_regex ]]; then
+		echo "This is no valid Aptoide URL."
+		exit 0
+	fi
+
+	### We change the normal HTTP link in the HTTP link used for mobile phones ###
+	mobile=$(echo 'http://m.')
+	test_link=$(echo $1 | grep -o 'http://m.')
+	if [ "$mobile" == "$test_link" ]; then
+		link_http=$link
+		else
+		link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
+	fi
+
+	### Save HTML with name of the application ###
+	url_array=(${link_http//\// })
+	apk_package_name="${url_array[@]: -4:1}"
+
+	### download the html of the input url ###
+	echo "Downloading the HTML file to extract information..."
+	wget -nv -U "" $link_http -O /tmp/$apk_package_name >/dev/null 2>&1
+
+	export returncode=$?
+	if ! [ "$returncode" = "0" ]; then
+	    echo -e "\nSorry, something went wrong...\n"
+	    exit 0
+	fi
+
+	### Check the trust level of the app ###
+	trust_level=$(cat /tmp/$apk_package_name | sed -n "s/.*app_install \([a-z]*\).*/\1/p")
+	case $trust_level in
+		"trusted" ) echo "The APK is \"trusted\""
+	    ;;
+	    "unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""
+	    ;;
+	    "warn" | "warning" )
+			echo -e "\nWARNING: Trust level of the APK is \"warning\" - the app is NOT trusted!"
+			echo "If you are shure you still want to download, enter \"yes\""
+			read download_answer
+			if ! [ "$download_answer" == "yes" ]; then
+				echo "Download cancelled"
+				exit 0;
+			fi
+	    ;;
+		*) echo "Trust level can't be detected."
+		;;
+	esac
+
+	################################################
+	### Get the parts for the final download url ###
+
+	domain="http://pool.apk.aptoide.com"
+
+	### Convert the package name, preplace "." and ###
+	### "_" with "-" and convert to lower space ###
+	link_apk_package_name=$(echo $apk_package_name | sed "s/\./\-/g" | sed "s/\_/\-/g" | awk '{print tolower($0)}')
+
+	### Two numbers, simply taken from the initial url
+	link_part_1="${url_array[@]: -3:1}"
+	link_part_2="${url_array[@]: -2:1}"
+
+	### MD5 number, taken from the loaded html file and ###
+	### stripped from the line "<div><strong>MD5:</strong> #32-md5-digits#</div>" ###
+	link_md5=$(cat /tmp/$apk_package_name | sed -n "s/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p")
+
+	### The final APK download url
+	apk_link="$domain/$link_apk_package_name-$link_part_1-$link_part_2-$link_md5.apk"
+
+	##############################################
+	### Save the APK in the download directory ###
+	echo "Downloading APK file..."
+	wget -c -q -U "" $apk_link -O $aptoide_home_dir/"$apk_package_name.apk"
+
+	export returncode=$?
+	if [ "$returncode" = "0" ]; then
+	   echo -e "\nFile saved as \"$apk_package_name.apk\" in \"$aptoide_home_dir\"\n"
 	else
-	link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
-fi
+	    echo -e "\nSorry, something went wrong...\n"
+	fi
 
-### Salvam html-ul descarcat ca numele aplicatiei ###
-fisier=$(echo $link_http | sed 's/\//\ /g' | awk '{print $NF}')
-echo "Download will start in"
-echo "3..."
-wget $link_http -O /tmp/$fisier >/dev/null 2>&1
-
-### We use the html file to search the link to the myapp file, ###
-### then we download and save the myapp file ###
-down=$(grep -i \<a\ class=\"app_install_button\" /tmp/$fisier | uniq | sed 's/<a class="app_install_button" href="//g' | sed 's/".>Install<\/a>//g' | sed 's/^[[:blank:]]*//g')
-echo "2.."
-wget $down -O /tmp/$fisier.myapp >/dev/null 2>&1
-fisier_myapp=$(echo /tmp/$fisier.myapp)
-echo "1."
-
-### From the myapp file we extract the apk's link and the apps name, ###
-### then we save the apk in apt_home_dir ###
-apk_ul=$(cat $fisier_myapp | sed 's/.*\<get\>//g' | sed 's/\<\/get\>.*//g' | grep http)
-nume_apk=$(echo $fisier_myapp | tail -1 | head -2 | sed 's/%20/\ /g' | sed 's/.myapp//g' | sed 's/\/tmp\///g')
-echo "Downloading file..."
-wget -c $apk_ul -O $aptoide_home_dir/"$nume_apk.apk"
-echo "File saved as $nume_apk"
-
-### Cleanup ###
-rm /tmp/$fisier 2>&1
-rm $fisier_myapp 2>&1
+	### Cleanup ###
+	rm /tmp/$apk_package_name 2>&1
 }
 
-main;
+main $@;
