@@ -9,8 +9,7 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script.###
-function main()
-{
+function main {
 	### We create a folder in which aptoide will download the apk ###
 	### and we save the name in a variable ###
 	mkdir -p $HOME/aptoide
@@ -25,32 +24,36 @@ function main()
 	fi
 }
 
-function atribut() 
-{
-
+function atribut {
+	link=$1
+	
 	### Test if we have a valid Aptiode URL ###
-	test_url_regex="^http\:\/\/.*\.store\.aptoide\.com\/.*$"
-	if ! [[ "$1" =~ $test_url_regex ]]; then
-		echo "This is no valid Aptoide URL."
-		exit 0
+	test_url_regex=$(echo $link | sed -n 's/^\(http:\/\/.*\.store\.aptoide\.com\/\).*$/\1/p')
+	if [[ "$test_url_regex" = "" ]]; then
+		test_url_regex=$(echo $link | sed -n 's/^\(.*\.store\.aptoide\.com\/\).*$/\1/p')
+		if [[ "$test_url_regex" = "" ]]; then
+			echo "This is no valid Aptoide URL."
+			exit 0
+		else
+			link="http://$link"
+		fi
 	fi
 
 	### We change the normal HTTP link in the HTTP link used for mobile phones ###
 	mobile=$(echo 'http://m.')
-	test_link=$(echo $1 | grep -o 'http://m.')
+	test_link=$(echo $link | grep -o 'http://m.')
 	if [ "$mobile" == "$test_link" ]; then
 		link_http=$link
 		else
-		link_http=$(echo $1 | sed 's/http:\/\//http:\/\/m./g')
+		link_http=$(echo $link | sed 's/http:\/\//http:\/\/m./g')
 	fi
 
 	### Save HTML with name of the application ###
-	url_array=(${link_http//\// })
-	apk_package_name="${url_array[@]: -4:1}"
+	apk_package_name=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/[0-9]*\/[0-9]*\/.*$/\1/p')
 
 	### download the html of the input url ###
 	echo "Downloading the HTML file to extract information..."
-	wget -nv -U "" $link_http -O /tmp/$apk_package_name >/dev/null 2>&1
+	wget -q --user-agent="" $link_http -O $aptoide_home_dir/.$apk_package_name
 
 	export returncode=$?
 	if ! [ "$returncode" = "0" ]; then
@@ -59,7 +62,7 @@ function atribut()
 	fi
 
 	### Check the trust level of the app ###
-	trust_level=$(cat /tmp/$apk_package_name | sed -n "s/.*app_install \([a-z]*\).*/\1/p")
+	trust_level=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*app_install \([a-z]*\).*/\1/p')
 	case $trust_level in
 		"trusted" ) echo "The APK is \"trusted\""
 	    ;;
@@ -85,23 +88,23 @@ function atribut()
 
 	### Convert the package name, preplace "." and ###
 	### "_" with "-" and convert to lower space ###
-	link_apk_package_name=$(echo $apk_package_name | sed "s/\./\-/g" | sed "s/\_/\-/g" | awk '{print tolower($0)}')
+	link_apk_package_name=$(echo $apk_package_name | sed 's/\./\-/g' | sed 's/\_/\-/g' | awk '{print tolower($0)}')
 
 	### Two numbers, simply taken from the initial url
-	link_part_1="${url_array[@]: -3:1}"
-	link_part_2="${url_array[@]: -2:1}"
+	link_part_1=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/[a-zA-Z0-9\._\-]*\/\([0-9]*\)\/[0-9]*\/.*$/\1/p')
+	link_part_2=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/[a-zA-Z0-9\._\-]*\/[0-9]*\/\([0-9]*\)\/.*$/\1/p')
 
 	### MD5 number, taken from the loaded html file and ###
 	### stripped from the line "<div><strong>MD5:</strong> #32-md5-digits#</div>" ###
-	link_md5=$(cat /tmp/$apk_package_name | sed -n "s/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p")
+	link_md5=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p')
 
 	### The final APK download url
 	apk_link="$domain/$link_apk_package_name-$link_part_1-$link_part_2-$link_md5.apk"
-
+	
 	##############################################
 	### Save the APK in the download directory ###
 	echo "Downloading APK file..."
-	wget -c -q -U "" $apk_link -O $aptoide_home_dir/"$apk_package_name.apk"
+	wget -c -q --user-agent="" $apk_link -O $aptoide_home_dir/$apk_package_name.apk
 
 	export returncode=$?
 	if [ "$returncode" = "0" ]; then
@@ -111,7 +114,7 @@ function atribut()
 	fi
 
 	### Cleanup ###
-	rm /tmp/$apk_package_name 2>&1
+	rm $aptoide_home_dir/.$apk_package_name 2>&1
 }
 
 main $@;
