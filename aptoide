@@ -1,11 +1,11 @@
 #!/bin/bash
 
 echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
-    This program comes with ABSOLUTELY NO WARRANTY;
-    This is free software, and you are welcome to redistribute it
-    under certain conditions;  for details see LICENCE
-    or visit http://www.gnu.org/licenses/
-    "
+	This program comes with ABSOLUTELY NO WARRANTY;
+	This is free software, and you are welcome to redistribute it
+	under certain conditions;  for details see LICENCE
+	or visit http://www.gnu.org/licenses/
+	"
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script.###
@@ -27,7 +27,7 @@ function main {
 function atribut {
 	link=$1
 	
-	### Test if we have a valid Aptiode URL ###
+	### Test if we have a valid Aptoide URL ###
 	test_url_regex=$(echo $link | sed -n 's/^\(http:\/\/.*\.store\.aptoide\.com\/\).*$/\1/p')
 	if [[ "$test_url_regex" = "" ]]; then
 		test_url_regex=$(echo $link | sed -n 's/^\(.*\.store\.aptoide\.com\/\).*$/\1/p')
@@ -57,18 +57,18 @@ function atribut {
 
 	export returncode=$?
 	if ! [ "$returncode" = "0" ]; then
-	    echo -e "\nSorry, something went wrong...\n"
-	    exit 0
+		echo -e "\nSorry, something went wrong...\n"
+		exit 0
 	fi
 
 	### Check the trust level of the app ###
 	trust_level=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*app_install \([a-z]*\).*/\1/p')
 	case $trust_level in
 		"trusted" ) echo "The APK is \"trusted\""
-	    ;;
-	    "unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""
-	    ;;
-	    "warn" | "warning" )
+		;;
+		"unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""
+		;;
+		"warn" | "warning" )
 			echo -e "\nWARNING: Trust level of the APK is \"warning\" - the app is NOT trusted!"
 			echo "If you are shure you still want to download, enter \"yes\""
 			read download_answer
@@ -76,7 +76,7 @@ function atribut {
 				echo "Download cancelled"
 				exit 0;
 			fi
-	    ;;
+		;;
 		*) echo "Trust level can't be detected."
 		;;
 	esac
@@ -110,7 +110,7 @@ function atribut {
 	if [ "$returncode" = "0" ]; then
 	   echo -e "\nFile saved as \"$apk_package_name.apk\" in \"$aptoide_home_dir\"\n"
 	else
-	    echo -e "\nSorry, something went wrong...\n"
+		echo -e "\nSorry, something went wrong...\n"
 	fi
 
 	### Cleanup ###
