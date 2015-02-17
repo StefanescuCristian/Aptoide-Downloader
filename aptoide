@@ -8,12 +8,18 @@ echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
 	"
 
 ### Main function. You can start the download using the link as a argument, ###
-### or read the link from stdin after running the script.###
+### or read the link from stdin after running the script. 					###
 function main {
-	### We create a folder in which aptoide will download the apk ###
-	### and we save the name in a variable ###
-	mkdir -p $HOME/aptoide
-	aptoide_home_dir=$(echo $HOME/aptoide)
+	### We create a folder in which Aptoide will download the apk 	###
+	### and we save the name in a variable 							###
+	if [ -w "/storage/sdcard0" ]; then
+		aptoide_home_dir="/storage/sdcard0/Download/aptoide"
+	else
+		aptoide_home_dir="$HOME/aptoide"
+	fi
+
+	mkdir -p $aptoide_home_dir
+	
 
 	if [ "$#" -eq 1 ]; then
 		atribut $1
@@ -32,7 +38,7 @@ function atribut {
 	if [[ "$test_url_regex" = "" ]]; then
 		test_url_regex=$(echo $link | sed -n 's/^\(.*\.store\.aptoide\.com\/\).*$/\1/p')
 		if [[ "$test_url_regex" = "" ]]; then
-			echo "This is no valid Aptoide URL."
+			echo "This is not a valid Aptoide URL."
 			exit 0
 		else
 			link="http://$link"
@@ -48,8 +54,11 @@ function atribut {
 		link_http=$(echo $link | sed 's/http:\/\//http:\/\/m./g')
 	fi
 
-	### Save HTML with name of the application ###
-	apk_package_name=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/[0-9]*\/[0-9]*\/.*$/\1/p')
+	### get the relevant parts of the HTTP link 						###
+	### the first part is the package name								###
+	### the other two are numbers we need in the final download link 	###
+	link_parts=($(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/\([0-9]*\)\/\([0-9]*\)\/.*$/\1 \2 \3/p'))
+	apk_package_name=${link_parts[0]}
 
 	### download the html of the input url ###
 	echo "Downloading the HTML file to extract information..."
@@ -64,9 +73,9 @@ function atribut {
 	### Check the trust level of the app ###
 	trust_level=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*app_install \([a-z]*\).*/\1/p')
 	case $trust_level in
-		"trusted" ) echo "The APK is \"trusted\""
+		"trusted" ) echo "The APK is \"trusted\"".
 		;;
-		"unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""
+		"unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""!
 		;;
 		"warn" | "warning" )
 			echo -e "\nWARNING: Trust level of the APK is \"warning\" - the app is NOT trusted!"
@@ -81,34 +90,33 @@ function atribut {
 		;;
 	esac
 
+	### Get the version number of the App ###
+	version_number=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*Version: \(.*\) |.*/\1/p')
+
 	################################################
 	### Get the parts for the final download url ###
 
 	domain="http://pool.apk.aptoide.com"
 
-	### Convert the package name, preplace "." and ###
-	### "_" with "-" and convert to lower space ###
+	### Convert the package name, preplace "." and 	###
+	### "_" with "-" and convert to lower space 	###
 	link_apk_package_name=$(echo $apk_package_name | sed 's/\./\-/g' | sed 's/\_/\-/g' | awk '{print tolower($0)}')
-
-	### Two numbers, simply taken from the initial url
-	link_part_1=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/[a-zA-Z0-9\._\-]*\/\([0-9]*\)\/[0-9]*\/.*$/\1/p')
-	link_part_2=$(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/[a-zA-Z0-9\._\-]*\/[0-9]*\/\([0-9]*\)\/.*$/\1/p')
 
 	### MD5 number, taken from the loaded html file and ###
 	### stripped from the line "<div><strong>MD5:</strong> #32-md5-digits#</div>" ###
 	link_md5=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p')
 
 	### The final APK download url
-	apk_link="$domain/$link_apk_package_name-$link_part_1-$link_part_2-$link_md5.apk"
-	
+	apk_link="$domain/$link_apk_package_name-${link_parts[1]}-${link_parts[2]}-$link_md5.apk"
+
 	##############################################
 	### Save the APK in the download directory ###
 	echo "Downloading APK file..."
-	wget -c -q --user-agent="" $apk_link -O $aptoide_home_dir/$apk_package_name.apk
+	wget -c -q --user-agent="" $apk_link -O "$aptoide_home_dir/$apk_package_name $version_number.apk"
 
 	export returncode=$?
 	if [ "$returncode" = "0" ]; then
-	   echo -e "\nFile saved as \"$apk_package_name.apk\" in \"$aptoide_home_dir\"\n"
+	   echo -e "\nFile saved as \"$apk_package_name $version_number.apk\" in \"$aptoide_home_dir\"\n"
 	else
 		echo -e "\nSorry, something went wrong...\n"
 	fi
