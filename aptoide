@@ -1,11 +1,15 @@
 #!/bin/bash
 
-echo "Aptoide Downloader  Copyright (C) 2012  Cristian Stefanescu
-	This program comes with ABSOLUTELY NO WARRANTY;
-	This is free software, and you are welcome to redistribute it
-	under certain conditions;  for details see LICENCE
-	or visit http://www.gnu.org/licenses/
-	"
+echo -e "\e[1m\e[93mAptoide Downloader\e[0m
+\e[1mCopyright (C) 2012-2015 Cristian Stefanescu\e[0m
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it
+under certain conditions;  for details see LICENCE
+or visit http://www.gnu.org/licenses/
+
+\e[1mContributors:
+	https://github.com/bastei
+	https://github.com/mfonville\e[0m"
 
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script. 					###
