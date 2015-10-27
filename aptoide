@@ -14,12 +14,14 @@ function main {
 	### and we save the name in a variable 							###
 	if [ -w "/storage/sdcard0" ]; then
 		aptoide_home_dir="/storage/sdcard0/Download/aptoide"
+	elif [ -w "$(xdg-user-dir DOWNLOAD)" ]; then
+		aptoide_home_dir="$(xdg-user-dir DOWNLOAD)/aptoide"
 	else
 		aptoide_home_dir="$HOME/aptoide"
 	fi
 
 	mkdir -p $aptoide_home_dir
-	
+
 
 	if [ "$#" -eq 1 ]; then
 		atribut $1
@@ -32,7 +34,7 @@ function main {
 
 function atribut {
 	link=$1
-	
+
 	### Test if we have a valid Aptoide URL ###
 	test_url_regex=$(echo $link | sed -n 's/^\(http:\/\/.*\.store\.aptoide\.com\/\).*$/\1/p')
 	if [[ "$test_url_regex" = "" ]]; then
