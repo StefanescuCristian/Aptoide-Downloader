@@ -57,8 +57,8 @@ function atribut {
 	### get the relevant parts of the HTTP link 						###
 	### the first part is the package name								###
 	### the other two are numbers we need in the final download link 	###
-	link_parts=($(echo $link_http | sed -n 's/^http:\/\/.*\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/\([0-9]*\)\/\([0-9]*\)\/.*$/\1 \2 \3/p'))
-	apk_package_name=${link_parts[0]}
+	link_parts=($(echo $link_http | sed -n 's/^http:\/\/m\.\(.*\)\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/\([0-9]*\)\/\([0-9]*\)\/.*$/\1 \2 \3 \4/p'))
+	apk_package_name=${link_parts[1]}
 
 	### download the html of the input url ###
 	echo "Downloading the HTML file to extract information..."
@@ -107,7 +107,7 @@ function atribut {
 	link_md5=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p')
 
 	### The final APK download url
-	apk_link="$domain/$link_apk_package_name-${link_parts[1]}-${link_parts[2]}-$link_md5.apk"
+	apk_link="$domain/${link_parts[0]}/$link_apk_package_name-${link_parts[2]}-${link_parts[3]}-$link_md5.apk"
 
 	##############################################
 	### Save the APK in the download directory ###
