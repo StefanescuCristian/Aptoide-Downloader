@@ -91,7 +91,7 @@ function atribut {
 	esac
 
 	### Get the version number of the App ###
-	version_number=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*Version: \(.*\) |.*/\1/p')
+	version_number=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*Ver.*: \(.*\) |.*/\1/p')
 
 	################################################
 	### Get the parts for the final download url ###
