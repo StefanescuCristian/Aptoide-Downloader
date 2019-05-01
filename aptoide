@@ -1,45 +1,134 @@
 #!/bin/bash
-### Aptoide Downloader v2
 
 echo -e "\e[1m\e[93mAptoide Downloader\e[0m
-\e[1mCopyright (C) 2012-2019 Cristian Stefanescu\e[0m
+\e[1mCopyright (C) 2012-2015 Cristian Stefanescu\e[0m
 This program comes with ABSOLUTELY NO WARRANTY;
 This is free software, and you are welcome to redistribute it
 under certain conditions;  for details see LICENCE
 or visit http://www.gnu.org/licenses/
+
 \e[1mContributors:
-https://github.com/bastei
-https://github.com/mfonville\e[0m"
+	https://github.com/bastei
+	https://github.com/mfonville\e[0m"
+
+### Main function. You can start the download using the link as a argument, ###
+### or read the link from stdin after running the script. 					###
+function main {
+	### We create a folder in which Aptoide will download the apk 	###
+	### and we save the name in a variable 							###
+	if [ -w "/storage/sdcard0" ]; then
+		aptoide_home_dir="/storage/sdcard0/Download/aptoide"
+	elif [ -w "$(xdg-user-dir DOWNLOAD)" ]; then
+		aptoide_home_dir="$(xdg-user-dir DOWNLOAD)/aptoide"
+	else
+		aptoide_home_dir="$HOME/aptoide"
+	fi
+
+	mkdir -p $aptoide_home_dir
 
 
-### some variables we somehow need
-### get page as html, use either arg1 or read from stdin
-if [ "$#" -eq 1 ]; then
-    URL=$1
-else
-    echo -e "\n\nInsert Aptoide URL:"
-    read link
-    URL=$link
-fi
-### Use the name in the URL to get the filename
-APK=$( echo $URL | sed 's,.*://,,g;s,..[a-zA-Z].aptoide.com.,,' )
-### Use a temporary file
-TEMP_PAGE=$( mktemp )
+	if [ "$#" -eq 1 ]; then
+		atribut $1
+	else
+		echo "Insert link:"
+		read link
+		atribut $link
+	fi
+}
 
-### Download the HTML source page
-wget -q $URL -O $TEMP_PAGE
+function atribut {
+	link=$1
 
-### Extract the apk link from the page
-LINK=$(grep data-mobile-download $TEMP_PAGE  | sed 's/.*="//g;s/.$//g')
+	### Test if we have a valid Aptoide URL ###
+	test_url_regex=$(echo $link | sed -n 's/^\(https:\/\/.*\.store\.aptoide\.com\/\).*$/\1/p')
+	if [[ "$test_url_regex" = "" ]]; then
+		test_url_regex=$(echo $link | sed -n 's/^\(.*\.store\.aptoide\.com\/\).*$/\1/p')
+		if [[ "$test_url_regex" = "" ]]; then
+			echo "This is not a valid Aptoide URL."
+			exit 0
+		else
+			link="https://$link"
+		fi
+	fi
 
-### Download the final link
-### aptoide.sh will download the apk in ~/Downloads or ~ if ~/Downloads is not accesible
-if [ -w "$( xdg-user-dir DOWNLOAD )" ]; then
-    aptoide_home_dir="$( xdg-user-dir DOWNLOAD )"
-else
-    aptoide_home_dir="$HOME"
-fi
-wget -q --show-progress $LINK -O $aptoide_home_dir/$APK.apk
+	### We change the normal HTTP link in the HTTP link used for mobile phones ###
+	mobile=$(echo 'https://m.')
+	test_link=$(echo $link | grep -o 'https://m.')
+	if [ "$mobile" == "$test_link" ]; then
+		link_http=$link
+		else
+		link_http=$(echo $link | sed 's/https:\/\//https:\/\/m./g')
+	fi
 
-### Cleanup the temporary file
-rm $TEMP_PAGE
+	### get the relevant parts of the HTTP link 						###
+	### the first part is the package name								###
+	### the other two are numbers we need in the final download link 	###
+	link_parts=($(echo $link_http | sed -n 's/^https:\/\/m\.\(.*\)\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/\([0-9]*\)\/\([0-9]*\)\/.*$/\1 \2 \3 \4/p'))
+	apk_package_name=${link_parts[1]}
+
+	### download the html of the input url ###
+	echo "Downloading the HTML file to extract information..."
+	wget --no-check-certificate -q --user-agent="" $link_http -O $aptoide_home_dir/.$apk_package_name
+
+	export returncode=$?
+	if ! [ "$returncode" = "0" ]; then
+		echo -e "\nSorry, something went wrong...\n"
+		exit 0
+	fi
+
+	### Check the trust level of the app ###
+	trust_level=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*app_install \([a-z]*\).*/\1/p')
+	case $trust_level in
+		"trusted" ) echo "The APK is \"trusted\"".
+		;;
+		"unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""!
+		;;
+		"warn" | "warning" )
+			echo -e "\nWARNING: Trust level of the APK is \"warning\" - the app is NOT trusted!"
+			echo "If you are shure you still want to download, enter \"yes\""
+			read download_answer
+			if ! [ "$download_answer" == "yes" ]; then
+				echo "Download cancelled"
+				exit 0;
+			fi
+		;;
+		*) echo "Trust level can't be detected."
+		;;
+	esac
+
+	### Get the version number of the App ###
+	version_number=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*Ver.*:\ <\/b>\(.*\) |.*/\1/p')
+
+	################################################
+	### Get the parts for the final download url ###
+
+	domain="http://pool.apk.aptoide.com"
+
+	### Convert the package name, preplace "." and 	###
+	### "_" with "-" and convert to lower space 	###
+	link_apk_package_name=$(echo $apk_package_name | sed 's/\./\-/g' | sed 's/\_/\-/g' | awk '{print tolower($0)}')
+
+	### MD5 number, taken from the loaded html file and ###
+	### stripped from the line "<div><strong>MD5:</strong> #32-md5-digits#</div>" ###
+	link_md5=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p')
+
+	### The final APK download url
+	apk_link="$domain/${link_parts[0]}/$link_apk_package_name-${link_parts[2]}-${link_parts[3]}-$link_md5.apk"
+
+	##############################################
+	### Save the APK in the download directory ###
+	echo "Downloading APK file..."
+	wget -c --user-agent="" $apk_link -O "$aptoide_home_dir/$apk_package_name $version_number.apk"
+
+	export returncode=$?
+	if [ "$returncode" = "0" ]; then
+	   echo -e "\nFile saved as \"$apk_package_name $version_number.apk\" in \"$aptoide_home_dir\"\n"
+	else
+		echo -e "\nSorry, something went wrong...\n"
+	fi
+
+	### Cleanup ###
+	rm $aptoide_home_dir/.$apk_package_name 2>&1
+}
+
+main $@;
