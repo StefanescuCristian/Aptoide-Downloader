@@ -11,6 +11,8 @@ or visit http://www.gnu.org/licenses/
 	https://github.com/bastei
 	https://github.com/mfonville\e[0m"
 
+agent="Aptoide"
+
 ### Main function. You can start the download using the link as a argument, ###
 ### or read the link from stdin after running the script. 					###
 function main {
@@ -36,133 +38,66 @@ function main {
 	fi
 }
 
-# Try to find the real mobile link by normal aptoide link (https://desired-package-id.en.aptoide.com/?store_name=somestore&app_id=xxxxxxxx)
-function get_real_link_by_normal_link {
-	orig_link=$1
-	curl -o $aptoide_home_dir/.temp $orig_link 2>/dev/null
-	export returncode=$?
-	if ! [ "$returncode" = "0" ]; then
-		exit 0
-	fi
-
-	# find the package in the downloaded given link
-	package_id=$(cat $aptoide_home_dir/.temp | sed -rn 's/.*data-package-id="(([A-Za-z]{1}[A-Za-z\d_]*\.)+[A-Za-z][A-Za-z\d_]*).*/\1/p')
-	if [[ "$package_id" = "" ]]; then
-		exit 0
-	fi
-
-	# get store name / app id from the given link
-	orig_store_name=$(echo $orig_link | sed -rn 's/.*store_name=(.+)&.*/\1/p')
-	orig_app_id=$(echo $orig_link | sed -rn 's/.*app_id=([0-9]+).*/\1/p')
-
-	echo $(get_real_link $package_id $orig_store_name $orig_app_id)
-}
-
-# Try to find the real mobile link by package id (and optional store name + app id)
-function get_real_link {
-	package_id=$1
-
-	orig_store_name=$2
-	orig_app_id=$3
-
-	# Find the app via Aptoide search API
-	curl -k -o $aptoide_home_dir/.temp "https://m.aptoide.com/phpajax/get_search.php?searchtxt=$package_id&type=apps" 2>/dev/null
-	export returncode=$?
-	if ! [ "$returncode" = "0" ]; then
-		exit 0
-	fi
-
-	# Get the link parts
-	real_link_parts=($(cat $aptoide_home_dir/.temp | sed -rn 's/.*m.(.*).store.aptoide.com\\\/app\\\/market\\\/'$package_id'\\\/([0-9]*)\\\/([0-9]*).*/\1 \2 \3/p'))
-	if [ -z "$real_link_parts" ]; then
-		exit 0
-	fi
-
-	if [ "$orig_store_name" = "" ]; then
-		# We want to download the latest version of the app, build the link url
-		real_link=$(cat $aptoide_home_dir/.temp | sed -rn 's/.*(m.'${real_link_parts[0]}'.store.aptoide.com\\\/app\\\/market\\\/'$package_id'\\\/[0-9]*\\\/[0-9]*\\\/[^\]*).*/\1/p' | sed 's/\\\//\//g')
-
-	else
-		# We want to download a specific version from a specific Store
-
-		# Get all versions of the app
-		curl -k -o $aptoide_home_dir/.temp -H "User-Agent: AptoideLite/44" "https://m.aptoide.com/list/versions/$package_id/${real_link_parts[1]}" 2>/dev/null
+function atribut {
+	if echo $1 | grep -Eq '^(([A-Za-z]{1}[A-Za-z\d_]*\.)+[A-Za-z][A-Za-z\d_]*)$'; then
+		### We got a package id as parameter
+		### Load JSON from search API
+		curl -k -o $aptoide_home_dir/.temp -H "User-Agent: $agent" "https://web-api-cache.aptoide.com/search?query=$1" 2>/dev/null
 		export returncode=$?
 		if ! [ "$returncode" = "0" ]; then
+			echo -e "\nSorry, something went wrong when searching for the app...\n"
 			exit 0
 		fi
 
-		# find the link of the version we are looking fo
-		real_link=($(cat $aptoide_home_dir/.temp | sed -rn 's/.*(m.'$orig_store_name'.store.aptoide.com\/app\/market\/'$package_id'\/[0-9]*\/'$orig_app_id'\/[^"]*).*/\1/p'))
-		real_link=${real_link[0]}
-	fi
-
-	rm $aptoide_home_dir/.temp
-	echo "https://$real_link"
-}
-
-function atribut {
-	if echo $1 | grep -Eq '^(([A-Za-z]{1}[A-Za-z\d_]*\.)+[A-Za-z][A-Za-z\d_]*)$'; then
-		# We got a package id as parameter
-		link=$(get_real_link $1)
+		### Check that we got the correct app information
+		package_id=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"package":"\([^"]*\)".*/\1/p')
+		if [[ "$package_id" != "$1" ]]; then
+			echo "App with id \"$1\" not found."
+			exit 0
+		fi
 	else
-		link=$1
-
-		### Always use https ###
-		link=$(echo $link | sed 's/http:\/\//https:\/\//g')
+		### We got an URL as parameter
+		### Always use https
+		link=$(echo $1 | sed 's/http:\/\//https:\/\//g')
 
 		### Test if we have a valid Aptoide URL ###
-		test_url_regex=$(echo $link | sed -n 's/^\(https:\/\/.*\.store\.aptoide\.com\/\).*$/\1/p')
+		test_url_regex=$(echo $link | sed -n 's/^\(https:\/\/.*\.aptoide\.com\/app\).*$/\1/p')
 		if [[ "$test_url_regex" = "" ]]; then
-			test_url_regex=$(echo $link | sed -n 's/^\(https:\/\/photoscan-by-google-photos\.[a-z]\{2,3\}\.aptoide\.com\).*$/\1/p')
-			if [[ "$test_url_regex" = "" ]]; then
-				echo "This is not a valid Aptoide URL."
-				exit 0
-			else
-				link=$(get_real_link_by_normal_link $link)
-			fi
+			echo "This is not a valid Aptoide app URL."
+			exit 0
+		fi
+
+		### download the html of the input url ###
+		curl -k -o $aptoide_home_dir/.temp -H "User-Agent: $agent" $link 2>/dev/null
+
+		export returncode=$?
+		if ! [ "$returncode" = "0" ]; then
+			echo -e "\nSorry, something went wrong...\n"
+			exit 0
 		fi
 	fi
 
-	if [[ "$link" = "" ]]; then
-		echo "Download site not found."
-		exit 0
-	fi
+	### Get the apk download URL
+	apk_link=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"path":"\(https[^"]*\.apk\)".*/\1/p')
+	apk_link=$(echo $apk_link | sed 's/\\\//\//g')
 
-	### We change the normal HTTP link in the HTTP link used for mobile phones ###
-	mobile=$(echo 'https://m.')
-	test_link=$(echo $link | grep -o 'https://m.')
-	if [ "$mobile" == "$test_link" ]; then
-		link_http=$link
-		else
-		link_http=$(echo $link | sed 's/https:\/\//https:\/\/m./g')
-	fi
-
-	### get the relevant parts of the HTTP link 						###
-	### the first part is the package name								###
-	### the other two are numbers we need in the final download link 	###
-	link_parts=($(echo $link_http | sed -n 's/^https:\/\/m\.\(.*\)\.store\.aptoide\.com\/.*\/\([a-zA-Z0-9\._\-]*\)\/\([0-9]*\)\/\([0-9]*\)\/.*$/\1 \2 \3 \4/p'))
-	apk_package_name=${link_parts[1]}
-
-	### download the html of the input url ###
-	echo "Downloading the HTML file to extract information..."
-	curl -k -o $aptoide_home_dir/.$apk_package_name -H "User-Agent: AptoideLite/44" $link_http 2>/dev/null
-
-	export returncode=$?
-	if ! [ "$returncode" = "0" ]; then
-		echo -e "\nSorry, something went wrong...\n"
+	if [[ "$apk_link" = "" ]]; then
+		echo "Could not find apk download link."
 		exit 0
 	fi
 
 	### Check the trust level of the app ###
-	trust_level=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*app_install \([a-z]*\).*/\1/p')
+	trust_level=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"malwareRank":"\([^"]*\)".*/\1/p')
+	if [[ "$trust_level" = "" ]]; then
+		trust_level=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"rank":"\([^"]*\)".*/\1/p')
+	fi
 	case $trust_level in
-		"trusted" ) echo "The APK is \"trusted\"".
+		"TRUSTED" ) echo "The APK is \"trusted\"".
 		;;
-		"unknown" ) echo "Be careful! Trust level of the APK is \"unknown\""!
+		"UNKNOWN" ) echo "Be careful! Trust level of the APK is \"unknown\""!
 		;;
-		"warn" | "warning" )
-			echo -e "\nWARNING: Trust level of the APK is \"warning\" - the app is NOT trusted!"
+		"WARN" | "WARNING" | "CRITICAL" )
+			echo -e "\nWARNING: Trust level of the APK is \"$trust_level\" - the app is NOT trusted!"
 			echo "If you are shure you still want to download, enter \"yes\""
 			read download_answer
 			if ! [ "$download_answer" == "yes" ]; then
@@ -174,39 +109,21 @@ function atribut {
 		;;
 	esac
 
-	### Get the version number of the App ###
-	version_number=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*Ver.*:\ <\/b>\(.*\) |.*/\1/p')
-
-	################################################
-	### Get the parts for the final download url ###
-
-	domain="http://pool.apk.aptoide.com"
-
-	### Convert the package name, preplace "." and 	###
-	### "_" with "-" and convert to lower space 	###
-	link_apk_package_name=$(echo $apk_package_name | sed 's/\./\-/g' | sed 's/\_/\-/g' | awk '{print tolower($0)}')
-
-	### MD5 number, taken from the loaded html file and ###
-	### stripped from the line "<div><strong>MD5:</strong> #32-md5-digits#</div>" ###
-	link_md5=$(cat $aptoide_home_dir/.$apk_package_name | sed -n 's/.*MD5:.* \([0-9a-z]\{32\}\).*/\1/p')
-
-	### The final APK download url
-	apk_link="$domain/${link_parts[0]}/$link_apk_package_name-${link_parts[2]}-${link_parts[3]}-$link_md5.apk"
+	### Get the package name and the version number ###
+	apk_package_name=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"package":"\([^"]*\)".*/\1/p')
+	version_number=$(cat $aptoide_home_dir/.temp | sed -n 's/.*"vername":"\([^"]*\)".*/\1/p')
 
 	##############################################
 	### Save the APK in the download directory ###
 	echo "Downloading APK file..."
-	curl -C - -H "User-Agent: AptoideLite/44" -o "$aptoide_home_dir/$apk_package_name $version_number.apk" $apk_link
+	curl -C - -H "User-Agent: $agent" -o "$aptoide_home_dir/$apk_package_name $version_number.apk" $apk_link
 
 	export returncode=$?
 	if [ "$returncode" = "0" ]; then
-	   echo -e "\nFile saved as \"$apk_package_name $version_number.apk\" in \"$aptoide_home_dir\"\n"
+		echo -e "\nFile saved as \"$apk_package_name $version_number.apk\" in \"$aptoide_home_dir\"\n"
 	else
 		echo -e "\nSorry, something went wrong...\n"
 	fi
-
-	### Cleanup ###
-	rm $aptoide_home_dir/.$apk_package_name 2>&1
 }
 
 main $@;
